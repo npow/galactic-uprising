@@ -2,6 +2,14 @@
 
 A strategic battle for the fate of the galaxy. Two asymmetric factions. One hidden base. Fourteen turns to decide everything.
 
+## Screenshots
+
+![Title Screen](screenshots/title-screen.png)
+
+![Galaxy Map](screenshots/galaxy-map.png)
+
+![System Selected](screenshots/system-selected.png)
+
 ## The Conflict
 
 The **Dominion** holds the galaxy in an iron grip. Its fleets darken the skies of a hundred worlds. Its intelligence networks reach into every corner of civilized space. It has one mission: find the hidden Liberation base and crush the uprising before it spreads.
