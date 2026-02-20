@@ -1,6 +1,6 @@
 // ============================================================
 // GALACTIC UPRISING - Galaxy Map Renderer
-// Canvas-based rendering of the galaxy map with all visual elements
+// Canvas-based rendering with improved visual effects
 // ============================================================
 
 class GalaxyRenderer {
@@ -18,6 +18,7 @@ class GalaxyRenderer {
         this.selectedSystem = null;
         this.moveTarget = null;
         this.animationId = null;
+        this.highlightedSystems = new Set(); // For showing valid move targets
 
         this.initStars();
         this.initNebulae();
@@ -25,26 +26,61 @@ class GalaxyRenderer {
     }
 
     initStars() {
-        for (let i = 0; i < 400; i++) {
+        // Multi-colored stars for more realistic space
+        const starColors = [
+            { r: 200, g: 210, b: 255 }, // Blue-white (most common)
+            { r: 255, g: 240, b: 220 }, // Warm white
+            { r: 180, g: 200, b: 255 }, // Blue
+            { r: 255, g: 220, b: 180 }, // Yellow-orange
+            { r: 255, g: 200, b: 180 }, // Orange-red (rare)
+        ];
+
+        for (let i = 0; i < 500; i++) {
+            const color = starColors[Math.random() < 0.6 ? 0 : Math.random() < 0.5 ? 1 : Math.random() < 0.5 ? 2 : Math.random() < 0.7 ? 3 : 4];
             this.stars.push({
                 x: Math.random(),
                 y: Math.random(),
-                size: Math.random() * 1.5 + 0.3,
-                brightness: Math.random() * 0.7 + 0.3,
-                twinkleSpeed: Math.random() * 0.02 + 0.005,
+                size: Math.random() * 1.2 + 0.2,
+                brightness: Math.random() * 0.6 + 0.2,
+                twinkleSpeed: Math.random() * 0.015 + 0.003,
                 twinkleOffset: Math.random() * Math.PI * 2,
+                color,
+            });
+        }
+        // Add a few bright stars
+        for (let i = 0; i < 15; i++) {
+            const color = starColors[Math.floor(Math.random() * 3)];
+            this.stars.push({
+                x: Math.random(),
+                y: Math.random(),
+                size: Math.random() * 1.5 + 1.5,
+                brightness: Math.random() * 0.3 + 0.7,
+                twinkleSpeed: Math.random() * 0.01 + 0.005,
+                twinkleOffset: Math.random() * Math.PI * 2,
+                color,
+                hasDiffraction: true,
             });
         }
     }
 
     initNebulae() {
-        for (let i = 0; i < 6; i++) {
+        const nebulaColors = [
+            { r: 30, g: 10, b: 60 },   // Purple
+            { r: 10, g: 25, b: 50 },   // Deep blue
+            { r: 50, g: 15, b: 25 },   // Crimson
+            { r: 10, g: 40, b: 30 },   // Teal
+            { r: 25, g: 15, b: 50 },   // Violet
+            { r: 40, g: 25, b: 10 },   // Amber
+            { r: 15, g: 15, b: 40 },   // Dark blue
+        ];
+        for (let i = 0; i < 7; i++) {
             this.nebulae.push({
-                x: Math.random(),
-                y: Math.random(),
-                radius: Math.random() * 0.15 + 0.08,
-                color: ['#1a0a2a', '#0a1a2a', '#2a0a1a', '#0a2a1a', '#1a1a2a', '#2a1a0a'][i],
-                opacity: Math.random() * 0.3 + 0.1,
+                x: 0.1 + Math.random() * 0.8,
+                y: 0.1 + Math.random() * 0.8,
+                radius: Math.random() * 0.12 + 0.06,
+                color: nebulaColors[i],
+                opacity: Math.random() * 0.25 + 0.08,
+                drift: Math.random() * 0.0001,
             });
         }
     }
@@ -109,36 +145,39 @@ class GalaxyRenderer {
         // Clear
         ctx.clearRect(0, 0, w, h);
 
-        // Background gradient
-        const bgGrad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.7);
-        bgGrad.addColorStop(0, '#0d0d28');
-        bgGrad.addColorStop(0.5, '#080820');
-        bgGrad.addColorStop(1, '#040410');
+        // Background
+        const bgGrad = ctx.createRadialGradient(w * 0.4, h * 0.4, 0, w / 2, h / 2, w * 0.75);
+        bgGrad.addColorStop(0, '#0a0a22');
+        bgGrad.addColorStop(0.4, '#060618');
+        bgGrad.addColorStop(1, '#020208');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
 
-        // Nebulae
+        // Nebulae (behind everything)
         this.renderNebulae(ctx);
 
         // Stars
         this.renderStars(ctx);
 
-        // Region labels
+        // Region labels (very subtle)
         this.renderRegionLabels(ctx);
 
-        // Connections
+        // Connections (hyperspace lanes)
         this.renderConnections(ctx);
 
-        // Systems
+        // Highlighted systems (valid move targets)
+        this.renderHighlights(ctx);
+
+        // Systems (planets)
         this.renderSystems(ctx);
 
-        // Units on map
+        // Units
         this.renderMapUnits(ctx);
 
-        // Leaders on map
+        // Leaders
         this.renderMapLeaders(ctx);
 
-        // Move indicators
+        // Move indicator
         if (this.moveTarget) {
             this.renderMoveIndicator(ctx);
         }
@@ -149,9 +188,51 @@ class GalaxyRenderer {
         this.animationId = requestAnimationFrame(() => this.render());
     }
 
+    renderNebulae(ctx) {
+        this.nebulae.forEach(n => {
+            const pos = this.worldToScreen(n.x, n.y);
+            const r = n.radius * this.width * this.camera.zoom;
+            const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r);
+            const c = n.color;
+            grad.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, ${n.opacity})`);
+            grad.addColorStop(0.5, `rgba(${c.r}, ${c.g}, ${c.b}, ${n.opacity * 0.4})`);
+            grad.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    renderStars(ctx) {
+        this.stars.forEach(s => {
+            const twinkle = Math.sin(this.animFrame * s.twinkleSpeed + s.twinkleOffset) * 0.3 + 0.7;
+            const alpha = s.brightness * twinkle;
+            const pos = this.worldToScreen(s.x, s.y);
+            const c = s.color;
+
+            ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, s.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Diffraction spikes on bright stars
+            if (s.hasDiffraction && alpha > 0.5) {
+                ctx.strokeStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha * 0.3})`;
+                ctx.lineWidth = 0.5;
+                const len = s.size * 4;
+                ctx.beginPath();
+                ctx.moveTo(pos.x - len, pos.y);
+                ctx.lineTo(pos.x + len, pos.y);
+                ctx.moveTo(pos.x, pos.y - len);
+                ctx.lineTo(pos.x, pos.y + len);
+                ctx.stroke();
+            }
+        });
+    }
+
     renderRegionLabels(ctx) {
         const state = engine.state;
-        // Compute region center from system positions
         const regionCenters = {};
         Object.values(state.systems).forEach(sys => {
             if (!regionCenters[sys.region]) regionCenters[sys.region] = { x: 0, y: 0, count: 0 };
@@ -167,34 +248,10 @@ class GalaxyRenderer {
             const cy = rc.y / rc.count;
             const pos = this.worldToScreen(cx, cy - 0.04);
 
-            ctx.fillStyle = region.color + '30';
-            ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+            ctx.fillStyle = 'rgba(100, 110, 140, 0.15)';
+            ctx.font = 'bold 10px "SF Pro Display", "Segoe UI", Arial, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(region.name.toUpperCase(), pos.x, pos.y);
-        });
-    }
-
-    renderNebulae(ctx) {
-        this.nebulae.forEach(n => {
-            const pos = this.worldToScreen(n.x, n.y);
-            const r = n.radius * this.width * this.camera.zoom;
-            const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r);
-            grad.addColorStop(0, n.color + Math.floor(n.opacity * 255).toString(16).padStart(2, '0'));
-            grad.addColorStop(1, n.color + '00');
-            ctx.fillStyle = grad;
-            ctx.fillRect(pos.x - r, pos.y - r, r * 2, r * 2);
-        });
-    }
-
-    renderStars(ctx) {
-        this.stars.forEach(s => {
-            const twinkle = Math.sin(this.animFrame * s.twinkleSpeed + s.twinkleOffset) * 0.3 + 0.7;
-            const alpha = s.brightness * twinkle;
-            const pos = this.worldToScreen(s.x, s.y);
-            ctx.fillStyle = `rgba(200, 210, 255, ${alpha})`;
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, s.size, 0, Math.PI * 2);
-            ctx.fill();
         });
     }
 
@@ -216,13 +273,49 @@ class GalaxyRenderer {
                 const from = this.worldToScreen(sys.x, sys.y);
                 const to = this.worldToScreen(nsys.x, nsys.y);
 
-                ctx.strokeStyle = 'rgba(60, 60, 120, 0.3)';
-                ctx.lineWidth = 1;
+                // Determine if this connection involves selected system
+                const isActive = this.selectedSystem === sysId || this.selectedSystem === nId;
+
+                // Gradient line that fades in the middle
+                const midX = (from.x + to.x) / 2;
+                const midY = (from.y + to.y) / 2;
+                const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+                const baseAlpha = isActive ? 0.35 : 0.12;
+                const midAlpha = isActive ? 0.15 : 0.04;
+                const baseColor = isActive ? '100, 140, 200' : '60, 65, 100';
+                grad.addColorStop(0, `rgba(${baseColor}, ${baseAlpha})`);
+                grad.addColorStop(0.5, `rgba(${baseColor}, ${midAlpha})`);
+                grad.addColorStop(1, `rgba(${baseColor}, ${baseAlpha})`);
+
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = isActive ? 1.5 : 0.8;
                 ctx.beginPath();
                 ctx.moveTo(from.x, from.y);
                 ctx.lineTo(to.x, to.y);
                 ctx.stroke();
             });
+        });
+    }
+
+    renderHighlights(ctx) {
+        if (this.highlightedSystems.size === 0) return;
+        const state = engine.state;
+
+        this.highlightedSystems.forEach(sysId => {
+            const sys = state.systems[sysId];
+            if (!sys) return;
+            const pos = this.worldToScreen(sys.x, sys.y);
+
+            // Pulsing ring around valid targets
+            const pulse = Math.sin(this.animFrame * 0.05) * 0.3 + 0.7;
+            ctx.strokeStyle = `rgba(93, 173, 226, ${0.3 * pulse})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.lineDashOffset = this.animFrame * 0.3;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 24, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
         });
     }
 
@@ -234,84 +327,126 @@ class GalaxyRenderer {
             const isSelected = this.selectedSystem === sys.id;
             const isHovered = this.hoveredSystem === sys.id;
             const isBase = sys.id === state.liberationBase && state.baseRevealed;
+            const isPlayerBase = sys.id === state.liberationBase && state.activePlayer === FACTIONS.LIBERATION;
             const isProbed = sys.probed;
 
-            // Region color
             const region = REGIONS.find(r => r.id === sys.region);
-            const regionColor = region ? region.color : '#888';
+            const regionColor = region ? region.color : '#888888';
 
-            // System circle
-            const baseRadius = 14;
-            const radius = baseRadius + (isHovered ? 3 : 0) + (isSelected ? 4 : 0);
+            const baseRadius = 13;
+            const radius = baseRadius + (isHovered ? 2 : 0) + (isSelected ? 3 : 0);
 
-            // Glow
+            // Outer glow for selected/hovered
             if (isSelected || isHovered) {
-                const glowGrad = ctx.createRadialGradient(pos.x, pos.y, radius * 0.5, pos.x, pos.y, radius * 2.5);
-                glowGrad.addColorStop(0, (isSelected ? 'rgba(100, 160, 255, 0.3)' : 'rgba(100, 160, 255, 0.15)'));
-                glowGrad.addColorStop(1, 'rgba(100, 160, 255, 0)');
+                const glowR = radius * 2.8;
+                const glowGrad = ctx.createRadialGradient(pos.x, pos.y, radius * 0.3, pos.x, pos.y, glowR);
+                const glowColor = isSelected ? '93, 173, 226' : '120, 150, 200';
+                const glowAlpha = isSelected ? 0.25 : 0.12;
+                glowGrad.addColorStop(0, `rgba(${glowColor}, ${glowAlpha})`);
+                glowGrad.addColorStop(1, `rgba(${glowColor}, 0)`);
                 ctx.fillStyle = glowGrad;
                 ctx.beginPath();
-                ctx.arc(pos.x, pos.y, radius * 2.5, 0, Math.PI * 2);
+                ctx.arc(pos.x, pos.y, glowR, 0, Math.PI * 2);
                 ctx.fill();
             }
 
-            // Loyalty outline
-            let outlineColor = '#444';
-            if (sys.loyalty === 'dominion') outlineColor = '#c44';
-            else if (sys.loyalty === 'liberation') outlineColor = '#4ac';
+            // Planet sphere - 3D-like gradient
+            const r = parseInt(regionColor.slice(1, 3), 16);
+            const g = parseInt(regionColor.slice(3, 5), 16);
+            const b = parseInt(regionColor.slice(5, 7), 16);
 
-            // Outer ring
-            ctx.strokeStyle = outlineColor;
-            ctx.lineWidth = isSelected ? 3 : 2;
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-            ctx.stroke();
+            // Shadow side gradient
+            const planetGrad = ctx.createRadialGradient(
+                pos.x - radius * 0.3, pos.y - radius * 0.3, radius * 0.1,
+                pos.x + radius * 0.1, pos.y + radius * 0.1, radius
+            );
+            planetGrad.addColorStop(0, `rgb(${Math.min(255, r + 40)}, ${Math.min(255, g + 40)}, ${Math.min(255, b + 40)})`);
+            planetGrad.addColorStop(0.6, `rgb(${Math.floor(r * 0.5)}, ${Math.floor(g * 0.5)}, ${Math.floor(b * 0.5)})`);
+            planetGrad.addColorStop(1, `rgb(${Math.floor(r * 0.15)}, ${Math.floor(g * 0.15)}, ${Math.floor(b * 0.15)})`);
 
-            // Fill
-            const fillGrad = ctx.createRadialGradient(pos.x - 3, pos.y - 3, 0, pos.x, pos.y, radius);
-            fillGrad.addColorStop(0, this.adjustBrightness(regionColor, 0.6));
-            fillGrad.addColorStop(1, this.adjustBrightness(regionColor, 0.2));
-            ctx.fillStyle = fillGrad;
+            ctx.fillStyle = planetGrad;
             ctx.beginPath();
             ctx.arc(pos.x, pos.y, radius - 1, 0, Math.PI * 2);
             ctx.fill();
 
-            // Production indicator
+            // Specular highlight
+            const specGrad = ctx.createRadialGradient(
+                pos.x - radius * 0.35, pos.y - radius * 0.35, 0,
+                pos.x - radius * 0.2, pos.y - radius * 0.2, radius * 0.5
+            );
+            specGrad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+            specGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = specGrad;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, radius - 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Loyalty ring
+            let ringColor;
+            if (sys.loyalty === 'dominion') ringColor = '#e74c3c';
+            else if (sys.loyalty === 'liberation') ringColor = '#5dade2';
+            else ringColor = '#404058';
+
+            ctx.strokeStyle = ringColor;
+            ctx.lineWidth = isSelected ? 2.5 : 1.8;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, radius + 1, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Production indicator - small gear dot
             if (sys.hasProduction) {
-                ctx.fillStyle = '#ffa';
+                const pdx = pos.x + radius * 0.7;
+                const pdy = pos.y - radius * 0.7;
+                ctx.fillStyle = '#f1c40f';
                 ctx.beginPath();
-                ctx.arc(pos.x + radius - 2, pos.y - radius + 2, 4, 0, Math.PI * 2);
+                ctx.arc(pdx, pdy, 3, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
             }
 
-            // Base marker
+            // Base marker (revealed)
             if (isBase) {
-                ctx.strokeStyle = '#f44';
+                const pulse = Math.sin(this.animFrame * 0.06) * 0.3 + 0.7;
+                ctx.strokeStyle = `rgba(231, 76, 60, ${pulse})`;
                 ctx.lineWidth = 2;
-                ctx.setLineDash([3, 3]);
+                ctx.setLineDash([4, 4]);
+                ctx.lineDashOffset = this.animFrame * 0.3;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius + 8, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Player's hidden base indicator (subtle)
+            if (isPlayerBase && !state.baseRevealed) {
+                ctx.strokeStyle = 'rgba(93, 173, 226, 0.25)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 3]);
                 ctx.beginPath();
                 ctx.arc(pos.x, pos.y, radius + 6, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
 
-            // Probed marker (X)
+            // Probed marker (subtle X)
             if (isProbed && !isBase) {
-                ctx.strokeStyle = 'rgba(255, 100, 100, 0.4)';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(231, 76, 60, 0.25)';
+                ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.moveTo(pos.x - 6, pos.y - 6);
-                ctx.lineTo(pos.x + 6, pos.y + 6);
-                ctx.moveTo(pos.x + 6, pos.y - 6);
-                ctx.lineTo(pos.x - 6, pos.y + 6);
+                ctx.moveTo(pos.x - 5, pos.y - 5);
+                ctx.lineTo(pos.x + 5, pos.y + 5);
+                ctx.moveTo(pos.x + 5, pos.y - 5);
+                ctx.lineTo(pos.x - 5, pos.y + 5);
                 ctx.stroke();
             }
 
             // System name
-            ctx.fillStyle = isHovered || isSelected ? '#fff' : '#aab';
-            ctx.font = '10px "Segoe UI", Arial, sans-serif';
+            ctx.fillStyle = isHovered || isSelected ? '#e8e8ff' : '#7778aa';
+            ctx.font = `${isSelected ? '600' : '400'} 10px "SF Pro Display", "Segoe UI", Arial, sans-serif`;
             ctx.textAlign = 'center';
-            ctx.fillText(sys.name, pos.x, pos.y + radius + 14);
+            ctx.fillText(sys.name, pos.x, pos.y + radius + 15);
         });
     }
 
@@ -323,42 +458,35 @@ class GalaxyRenderer {
             if (!sys) return;
             const pos = this.worldToScreen(sys.x, sys.y);
 
-            // Count units per faction
             const domSpace = units.space.filter(u => u.faction === FACTIONS.DOMINION).length;
             const libSpace = units.space.filter(u => u.faction === FACTIONS.LIBERATION).length;
             const domGround = units.ground.filter(u => u.faction === FACTIONS.DOMINION && !combatEngine.isStructure(u)).length;
             const libGround = units.ground.filter(u => u.faction === FACTIONS.LIBERATION && !combatEngine.isStructure(u)).length;
 
-            // Draw unit indicators around system
-            const yOff = -24;
-            if (domSpace > 0) {
-                this.drawUnitBadge(ctx, pos.x - 12, pos.y + yOff, domSpace, '#c44', '◈');
-            }
-            if (libSpace > 0) {
-                this.drawUnitBadge(ctx, pos.x + 12, pos.y + yOff, libSpace, '#4ac', '◈');
-            }
-            if (domGround > 0) {
-                this.drawUnitBadge(ctx, pos.x - 12, pos.y + 24, domGround, '#c44', '⬢');
-            }
-            if (libGround > 0) {
-                this.drawUnitBadge(ctx, pos.x + 12, pos.y + 24, libGround, '#4ac', '⬢');
-            }
+            const yOff = -22;
+            if (domSpace > 0) this.drawUnitBadge(ctx, pos.x - 14, pos.y + yOff, domSpace, '#e74c3c', 'S');
+            if (libSpace > 0) this.drawUnitBadge(ctx, pos.x + 14, pos.y + yOff, libSpace, '#5dade2', 'S');
+            if (domGround > 0) this.drawUnitBadge(ctx, pos.x - 14, pos.y + 22, domGround, '#e74c3c', 'G');
+            if (libGround > 0) this.drawUnitBadge(ctx, pos.x + 14, pos.y + 22, libGround, '#5dade2', 'G');
         });
     }
 
-    drawUnitBadge(ctx, x, y, count, color, icon) {
-        ctx.fillStyle = color + '40';
-        ctx.strokeStyle = color + '80';
+    drawUnitBadge(ctx, x, y, count, color, type) {
+        // Rounded pill badge
+        const w = 22;
+        const h = 14;
+        ctx.fillStyle = color + '25';
+        ctx.strokeStyle = color + '60';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(x - 10, y - 7, 20, 14, 3);
+        ctx.roundRect(x - w / 2, y - h / 2, w, h, 4);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = color;
-        ctx.font = '9px "Segoe UI", Arial, sans-serif';
+        ctx.font = 'bold 9px "SF Pro Display", "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${icon}${count}`, x, y + 3);
+        ctx.fillText(`${count}${type}`, x, y + 3);
     }
 
     renderMapLeaders(ctx) {
@@ -371,31 +499,37 @@ class GalaxyRenderer {
                 if (!sys) return;
                 const pos = this.worldToScreen(sys.x, sys.y);
 
-                // Offset leaders so they don't overlap
                 const factionLeaders = state.leaders[faction].filter(l => l.location === leader.location && !l.captured);
                 const idx = factionLeaders.indexOf(leader);
                 const angle = (idx / factionLeaders.length) * Math.PI * 2 - Math.PI / 2;
-                const orbitR = 28;
+                const orbitR = 30;
                 const lx = pos.x + Math.cos(angle) * orbitR;
                 const ly = pos.y + Math.sin(angle) * orbitR;
 
-                // Leader pip
+                // Leader circle with border
+                const leaderR = 7;
                 ctx.fillStyle = leader.color;
                 ctx.beginPath();
-                ctx.arc(lx, ly, 6, 0, Math.PI * 2);
+                ctx.arc(lx, ly, leaderR, 0, Math.PI * 2);
                 ctx.fill();
 
+                // Border
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Avatar letter
                 ctx.fillStyle = '#fff';
-                ctx.font = 'bold 8px "Segoe UI", Arial, sans-serif';
+                ctx.font = 'bold 9px "SF Pro Display", "Segoe UI", Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(leader.avatar, lx, ly + 3);
 
-                // Mission indicator
+                // Mission indicator - golden ring
                 if (leader.onMission) {
-                    ctx.strokeStyle = '#ff0';
+                    ctx.strokeStyle = '#f1c40f';
                     ctx.lineWidth = 1.5;
                     ctx.beginPath();
-                    ctx.arc(lx, ly, 8, 0, Math.PI * 2);
+                    ctx.arc(lx, ly, leaderR + 2, 0, Math.PI * 2);
                     ctx.stroke();
                 }
             });
@@ -413,9 +547,9 @@ class GalaxyRenderer {
         const toPos = this.worldToScreen(to.x, to.y);
 
         // Animated dashed line
-        ctx.strokeStyle = '#7af';
+        ctx.strokeStyle = 'rgba(93, 173, 226, 0.6)';
         ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]);
+        ctx.setLineDash([6, 4]);
         ctx.lineDashOffset = -this.animFrame * 0.5;
         ctx.beginPath();
         ctx.moveTo(fromPos.x, fromPos.y);
@@ -425,11 +559,11 @@ class GalaxyRenderer {
 
         // Arrow at destination
         const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x);
-        ctx.fillStyle = '#7af';
+        ctx.fillStyle = 'rgba(93, 173, 226, 0.8)';
         ctx.beginPath();
-        ctx.moveTo(toPos.x - Math.cos(angle) * 20, toPos.y - Math.sin(angle) * 20);
-        ctx.lineTo(toPos.x - Math.cos(angle - 0.4) * 28, toPos.y - Math.sin(angle - 0.4) * 28);
-        ctx.lineTo(toPos.x - Math.cos(angle + 0.4) * 28, toPos.y - Math.sin(angle + 0.4) * 28);
+        ctx.moveTo(toPos.x - Math.cos(angle) * 18, toPos.y - Math.sin(angle) * 18);
+        ctx.lineTo(toPos.x - Math.cos(angle - 0.4) * 26, toPos.y - Math.sin(angle - 0.4) * 26);
+        ctx.lineTo(toPos.x - Math.cos(angle + 0.4) * 26, toPos.y - Math.sin(angle + 0.4) * 26);
         ctx.closePath();
         ctx.fill();
     }
@@ -454,19 +588,13 @@ class GalaxyRenderer {
             if (p.life <= 0) return false;
 
             const pos = this.worldToScreen(p.x, p.y);
-            ctx.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2, '0');
+            const alpha = Math.floor(p.life * 255);
+            ctx.fillStyle = p.color + alpha.toString(16).padStart(2, '0');
             ctx.beginPath();
             ctx.arc(pos.x, pos.y, p.size * p.life, 0, Math.PI * 2);
             ctx.fill();
             return true;
         });
-    }
-
-    adjustBrightness(hex, factor) {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        return `rgb(${Math.floor(r * factor)}, ${Math.floor(g * factor)}, ${Math.floor(b * factor)})`;
     }
 
     startRendering() {
@@ -487,13 +615,21 @@ class TitleStarRenderer {
         this.stars = [];
         this.animId = null;
 
-        for (let i = 0; i < 300; i++) {
+        const colors = [
+            { r: 200, g: 210, b: 255 },
+            { r: 255, g: 240, b: 220 },
+            { r: 180, g: 200, b: 255 },
+            { r: 255, g: 220, b: 180 },
+        ];
+
+        for (let i = 0; i < 350; i++) {
             this.stars.push({
                 x: Math.random() * window.innerWidth,
                 y: Math.random() * window.innerHeight,
-                size: Math.random() * 2,
-                speed: Math.random() * 0.5 + 0.1,
-                brightness: Math.random(),
+                size: Math.random() * 1.5 + 0.2,
+                speed: Math.random() * 0.3 + 0.05,
+                brightness: Math.random() * 0.6 + 0.2,
+                color: colors[Math.floor(Math.random() * colors.length)],
             });
         }
 
@@ -521,7 +657,8 @@ class TitleStarRenderer {
             s.y += s.speed;
             if (s.y > h) { s.y = 0; s.x = Math.random() * w; }
 
-            ctx.fillStyle = `rgba(180, 200, 255, ${s.brightness})`;
+            const c = s.color;
+            ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${s.brightness})`;
             ctx.beginPath();
             ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
             ctx.fill();

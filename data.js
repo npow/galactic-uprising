@@ -118,49 +118,49 @@ const CONNECTIONS = [
 // ---- UNIT TYPES ----
 const UNIT_TYPES = {
     // Dominion ground units
-    DOM_TROOPER: { id: 'dom_trooper', name: 'Enforcer', faction: 'dominion', domain: 'ground', health: 1, attack: { black: 1 }, cost: 1, icon: '⬢', color: '#c44' },
-    DOM_ARMOR: { id: 'dom_armor', name: 'Siege Walker', faction: 'dominion', domain: 'ground', health: 2, attack: { red: 1 }, cost: 2, icon: '⬡', color: '#e55' },
-    DOM_ASSAULT: { id: 'dom_assault', name: 'Storm Legion', faction: 'dominion', domain: 'ground', health: 3, attack: { red: 1, black: 1 }, cost: 3, icon: '◆', color: '#f66' },
+    DOM_TROOPER: { id: 'dom_trooper', name: 'Enforcer', faction: 'dominion', domain: 'ground', health: 1, attack: { black: 1 }, cost: 1, icon: '⬢', color: '#e74c3c' },
+    DOM_ARMOR: { id: 'dom_armor', name: 'Siege Walker', faction: 'dominion', domain: 'ground', health: 2, attack: { red: 1 }, cost: 2, icon: '⬡', color: '#e85d4f' },
+    DOM_ASSAULT: { id: 'dom_assault', name: 'Storm Legion', faction: 'dominion', domain: 'ground', health: 3, attack: { red: 1, black: 1 }, cost: 3, icon: '◆', color: '#f07060' },
 
     // Dominion space units
-    DOM_FIGHTER: { id: 'dom_fighter', name: 'Interceptor', faction: 'dominion', domain: 'space', health: 1, attack: { black: 1 }, cost: 1, icon: '▸', color: '#c44', isLight: true },
-    DOM_CRUISER: { id: 'dom_cruiser', name: 'Warship', faction: 'dominion', domain: 'space', health: 2, attack: { red: 1 }, cost: 2, icon: '◈', color: '#e55' },
-    DOM_CAPITAL: { id: 'dom_capital', name: 'Dreadnought', faction: 'dominion', domain: 'space', health: 3, attack: { red: 2 }, cost: 3, icon: '◉', color: '#f66', carriesGround: 4, carriesFighters: 2 },
-    DOM_SUPER: { id: 'dom_super', name: 'Titan', faction: 'dominion', domain: 'space', health: 4, attack: { red: 3 }, cost: 0, icon: '★', color: '#f88', carriesGround: 6, carriesFighters: 4, isUnique: true },
+    DOM_FIGHTER: { id: 'dom_fighter', name: 'Interceptor', faction: 'dominion', domain: 'space', health: 1, attack: { black: 1 }, cost: 1, icon: '▸', color: '#e74c3c', isLight: true },
+    DOM_CRUISER: { id: 'dom_cruiser', name: 'Warship', faction: 'dominion', domain: 'space', health: 2, attack: { red: 1 }, cost: 2, icon: '◈', color: '#e85d4f' },
+    DOM_CAPITAL: { id: 'dom_capital', name: 'Dreadnought', faction: 'dominion', domain: 'space', health: 3, attack: { red: 2 }, cost: 3, icon: '◉', color: '#f07060', carriesGround: 4, carriesFighters: 2 },
+    DOM_SUPER: { id: 'dom_super', name: 'Titan', faction: 'dominion', domain: 'space', health: 4, attack: { red: 3 }, cost: 0, icon: '★', color: '#ff8070', carriesGround: 6, carriesFighters: 4, isUnique: true },
 
     // Liberation ground units
-    LIB_TROOPER: { id: 'lib_trooper', name: 'Volunteer', faction: 'liberation', domain: 'ground', health: 1, attack: { black: 1 }, cost: 1, icon: '⬢', color: '#4ac' },
-    LIB_ARMOR: { id: 'lib_armor', name: 'Raider Mech', faction: 'liberation', domain: 'ground', health: 2, attack: { red: 1 }, cost: 2, icon: '⬡', color: '#5bd' },
-    LIB_SPECIAL: { id: 'lib_special', name: 'Pathfinder', faction: 'liberation', domain: 'ground', health: 1, attack: { black: 2 }, cost: 2, icon: '◇', color: '#6ce' },
+    LIB_TROOPER: { id: 'lib_trooper', name: 'Volunteer', faction: 'liberation', domain: 'ground', health: 1, attack: { black: 1 }, cost: 1, icon: '⬢', color: '#5dade2' },
+    LIB_ARMOR: { id: 'lib_armor', name: 'Raider Mech', faction: 'liberation', domain: 'ground', health: 2, attack: { red: 1 }, cost: 2, icon: '⬡', color: '#6dbde8' },
+    LIB_SPECIAL: { id: 'lib_special', name: 'Pathfinder', faction: 'liberation', domain: 'ground', health: 1, attack: { black: 2 }, cost: 2, icon: '◇', color: '#85c1e9' },
 
     // Liberation space units
-    LIB_FIGHTER: { id: 'lib_fighter', name: 'Strikecraft', faction: 'liberation', domain: 'space', health: 1, attack: { black: 1 }, cost: 1, icon: '▸', color: '#4ac', isLight: true },
-    LIB_CORVETTE: { id: 'lib_corvette', name: 'Corvette', faction: 'liberation', domain: 'space', health: 2, attack: { red: 1 }, cost: 2, icon: '◈', color: '#5bd' },
-    LIB_FRIGATE: { id: 'lib_frigate', name: 'Frigate', faction: 'liberation', domain: 'space', health: 3, attack: { red: 1, black: 1 }, cost: 3, icon: '◉', color: '#6ce', carriesGround: 2, carriesFighters: 1 },
+    LIB_FIGHTER: { id: 'lib_fighter', name: 'Strikecraft', faction: 'liberation', domain: 'space', health: 1, attack: { black: 1 }, cost: 1, icon: '▸', color: '#5dade2', isLight: true },
+    LIB_CORVETTE: { id: 'lib_corvette', name: 'Corvette', faction: 'liberation', domain: 'space', health: 2, attack: { red: 1 }, cost: 2, icon: '◈', color: '#6dbde8' },
+    LIB_FRIGATE: { id: 'lib_frigate', name: 'Frigate', faction: 'liberation', domain: 'space', health: 3, attack: { red: 1, black: 1 }, cost: 3, icon: '◉', color: '#85c1e9', carriesGround: 2, carriesFighters: 1 },
 
     // Structures (built on planets)
-    DOM_SHIELD: { id: 'dom_shield', name: 'Shield Array', faction: 'dominion', domain: 'structure', health: 3, attack: {}, cost: 1, icon: '▣', color: '#c44', isStructure: true, blockGround: true },
-    LIB_SHIELD: { id: 'lib_shield', name: 'Ion Barrier', faction: 'liberation', domain: 'structure', health: 3, attack: {}, cost: 1, icon: '▣', color: '#4ac', isStructure: true, blockGround: true },
+    DOM_SHIELD: { id: 'dom_shield', name: 'Shield Array', faction: 'dominion', domain: 'structure', health: 3, attack: {}, cost: 1, icon: '▣', color: '#e74c3c', isStructure: true, blockGround: true },
+    LIB_SHIELD: { id: 'lib_shield', name: 'Ion Barrier', faction: 'liberation', domain: 'structure', health: 3, attack: {}, cost: 1, icon: '▣', color: '#5dade2', isStructure: true, blockGround: true },
 };
 
 // ---- LEADERS ----
 // Skills: diplomacy, intel, combat, logistics
 const LEADER_DATA = {
     dominion: [
-        { id: 'dom_l1', name: 'Grand Regent Voss', skills: { diplomacy: 2, intel: 1, combat: 2, logistics: 1 }, startSystem: 'throne_world', faction: 'dominion', avatar: 'V', color: '#e44', isRing: true },
-        { id: 'dom_l2', name: 'Admiral Krath', skills: { diplomacy: 0, intel: 1, combat: 3, logistics: 2 }, startSystem: 'throne_world', faction: 'dominion', avatar: 'K', color: '#c33' },
-        { id: 'dom_l3', name: 'Director Sable', skills: { diplomacy: 1, intel: 3, combat: 0, logistics: 1 }, startSystem: 'nexus_prime', faction: 'dominion', avatar: 'S', color: '#a22' },
-        { id: 'dom_l4', name: 'General Thorne', skills: { diplomacy: 0, intel: 0, combat: 3, logistics: 3 }, startSystem: 'citadel_reach', faction: 'dominion', avatar: 'T', color: '#d55' },
-        { id: 'dom_l5', name: 'Emissary Lux', skills: { diplomacy: 3, intel: 2, combat: 0, logistics: 0 }, startSystem: 'nexus_prime', faction: 'dominion', avatar: 'L', color: '#b44' },
-        { id: 'dom_l6', name: 'Warden Hex', skills: { diplomacy: 1, intel: 1, combat: 2, logistics: 2 }, startSystem: 'forge_world', faction: 'dominion', avatar: 'H', color: '#c55' },
+        { id: 'dom_l1', name: 'Grand Regent Voss', skills: { diplomacy: 2, intel: 1, combat: 2, logistics: 1 }, startSystem: 'throne_world', faction: 'dominion', avatar: 'V', color: '#e74c3c', isRing: true },
+        { id: 'dom_l2', name: 'Admiral Krath', skills: { diplomacy: 0, intel: 1, combat: 3, logistics: 2 }, startSystem: 'throne_world', faction: 'dominion', avatar: 'K', color: '#c0392b' },
+        { id: 'dom_l3', name: 'Director Sable', skills: { diplomacy: 1, intel: 3, combat: 0, logistics: 1 }, startSystem: 'nexus_prime', faction: 'dominion', avatar: 'S', color: '#a93226' },
+        { id: 'dom_l4', name: 'General Thorne', skills: { diplomacy: 0, intel: 0, combat: 3, logistics: 3 }, startSystem: 'citadel_reach', faction: 'dominion', avatar: 'T', color: '#e85d4f' },
+        { id: 'dom_l5', name: 'Emissary Lux', skills: { diplomacy: 3, intel: 2, combat: 0, logistics: 0 }, startSystem: 'nexus_prime', faction: 'dominion', avatar: 'L', color: '#b03a2e' },
+        { id: 'dom_l6', name: 'Warden Hex', skills: { diplomacy: 1, intel: 1, combat: 2, logistics: 2 }, startSystem: 'forge_world', faction: 'dominion', avatar: 'H', color: '#d35448' },
     ],
     liberation: [
-        { id: 'lib_l1', name: 'Commander Astra', skills: { diplomacy: 1, intel: 1, combat: 3, logistics: 1 }, startSystem: null, faction: 'liberation', avatar: 'A', color: '#4af', isRing: true },
-        { id: 'lib_l2', name: 'Sage Orion', skills: { diplomacy: 2, intel: 2, combat: 1, logistics: 1 }, startSystem: null, faction: 'liberation', avatar: 'O', color: '#39d' },
-        { id: 'lib_l3', name: 'Scout Vex', skills: { diplomacy: 0, intel: 3, combat: 1, logistics: 2 }, startSystem: null, faction: 'liberation', avatar: 'X', color: '#28c' },
-        { id: 'lib_l4', name: 'Captain Reeve', skills: { diplomacy: 1, intel: 0, combat: 2, logistics: 3 }, startSystem: null, faction: 'liberation', avatar: 'R', color: '#5bf' },
-        { id: 'lib_l5', name: 'Envoy Pax', skills: { diplomacy: 3, intel: 1, combat: 0, logistics: 1 }, startSystem: null, faction: 'liberation', avatar: 'P', color: '#4ae' },
-        { id: 'lib_l6', name: 'Partisan Zara', skills: { diplomacy: 0, intel: 2, combat: 2, logistics: 2 }, startSystem: null, faction: 'liberation', avatar: 'Z', color: '#3ad' },
+        { id: 'lib_l1', name: 'Commander Astra', skills: { diplomacy: 1, intel: 1, combat: 3, logistics: 1 }, startSystem: null, faction: 'liberation', avatar: 'A', color: '#5dade2', isRing: true },
+        { id: 'lib_l2', name: 'Sage Orion', skills: { diplomacy: 2, intel: 2, combat: 1, logistics: 1 }, startSystem: null, faction: 'liberation', avatar: 'O', color: '#2e86c1' },
+        { id: 'lib_l3', name: 'Scout Vex', skills: { diplomacy: 0, intel: 3, combat: 1, logistics: 2 }, startSystem: null, faction: 'liberation', avatar: 'X', color: '#2471a3' },
+        { id: 'lib_l4', name: 'Captain Reeve', skills: { diplomacy: 1, intel: 0, combat: 2, logistics: 3 }, startSystem: null, faction: 'liberation', avatar: 'R', color: '#6dbde8' },
+        { id: 'lib_l5', name: 'Envoy Pax', skills: { diplomacy: 3, intel: 1, combat: 0, logistics: 1 }, startSystem: null, faction: 'liberation', avatar: 'P', color: '#3498db' },
+        { id: 'lib_l6', name: 'Partisan Zara', skills: { diplomacy: 0, intel: 2, combat: 2, logistics: 2 }, startSystem: null, faction: 'liberation', avatar: 'Z', color: '#2980b9' },
     ]
 };
 

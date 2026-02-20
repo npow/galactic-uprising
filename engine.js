@@ -607,7 +607,7 @@ class GameEngine {
                     startSystem: null,
                     faction: 'liberation',
                     avatar: 'N',
-                    color: '#5ce',
+                    color: '#5dade2',
                     location: leader.location,
                     onMission: false,
                     captured: false,

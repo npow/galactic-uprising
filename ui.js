@@ -1,6 +1,7 @@
 // ============================================================
 // GALACTIC UPRISING - UI Manager
 // Handles all DOM-based UI, panels, modals, and user interaction
+// Improved UX with clear turn indicators and step-by-step prompts
 // ============================================================
 
 class UIManager {
@@ -23,13 +24,11 @@ class UIManager {
     setupCanvasEvents() {
         const canvas = this.renderer.canvas;
 
-        // Single mousemove handler for both hover and drag
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
 
-            // Handle dragging
             if (this.renderer.isDragging) {
                 this.renderer.camera.x = e.clientX - this.renderer.dragStart.x;
                 this.renderer.camera.y = e.clientY - this.renderer.dragStart.y;
@@ -37,7 +36,6 @@ class UIManager {
                 return;
             }
 
-            // Handle hover
             const sys = this.renderer.getSystemAtScreen(mx, my);
             this.renderer.hoveredSystem = sys ? sys.id : null;
 
@@ -47,7 +45,6 @@ class UIManager {
                 this.hideTooltip();
             }
 
-            // If in moving mode, show move target preview
             if (this.mode === 'moving' && this.movingFrom && sys) {
                 const adj = engine.getAdjacentSystems(this.movingFrom);
                 this.renderer.moveTarget = adj.includes(sys.id) ? sys.id : null;
@@ -65,7 +62,6 @@ class UIManager {
             }
         });
 
-        // Pan with right-click drag
         canvas.addEventListener('mousedown', (e) => {
             if (e.button === 2 || e.button === 1) {
                 this.renderer.isDragging = true;
@@ -91,7 +87,6 @@ class UIManager {
         const state = engine.state;
 
         if (this.mode === 'select_target') {
-            // Selecting target for mission
             this.selectedSystemId = sys.id;
             this.renderer.selectedSystem = sys.id;
             this.completeMissionAssignment(sys.id);
@@ -99,7 +94,6 @@ class UIManager {
         }
 
         if (this.mode === 'moving') {
-            // Selecting destination for movement
             const adjacent = engine.getAdjacentSystems(this.movingFrom);
             if (adjacent.includes(sys.id)) {
                 this.executeMove(sys.id);
@@ -109,7 +103,6 @@ class UIManager {
             return;
         }
 
-        // Normal click - select system
         this.selectedSystemId = sys.id;
         this.renderer.selectedSystem = sys.id;
         this.updateRightPanel();
@@ -128,21 +121,25 @@ class UIManager {
         const state = engine.state;
         if (!state) return;
 
-        document.getElementById('turn-info').textContent = `Turn ${state.turn} of ${MAX_TURNS}`;
-        document.getElementById('phase-info').textContent = this.getPhaseName(state.phase);
+        // Turn counter
+        document.getElementById('turn-info').innerHTML = `Turn <span>${state.turn}</span> / ${MAX_TURNS}`;
 
-        // Time/reputation marker pips
-        const tmEl = document.getElementById('time-marker');
+        // Phase tracker
+        const tracker = document.getElementById('phase-tracker');
+        const isDom = state.activePlayer === FACTIONS.DOMINION;
+        const domClass = isDom ? ' dom-turn' : '';
+        const phases = [
+            { id: 'assignment', label: 'Assign' },
+            { id: 'command', label: 'Command' },
+            { id: 'refresh', label: 'Refresh' },
+        ];
         let html = '';
-        for (let i = 1; i <= MAX_TURNS; i++) {
-            const isTime = i <= state.timeMarker;
-            const isRep = i <= state.reputationMarker;
-            let cls = '';
-            if (i <= state.timeMarker) cls = 'past';
-            if (i === state.turn) cls = 'active';
-            html += `<div class="time-pip ${cls}" title="Turn ${i}${isRep ? ' | Rep: ' + state.reputationMarker : ''}"></div>`;
-        }
-        tmEl.innerHTML = html;
+        phases.forEach((p, i) => {
+            const isActive = state.phase === p.id;
+            html += `<div class="phase-step${isActive ? ' active' + domClass : ''}">${p.label}</div>`;
+            if (i < phases.length - 1) html += `<span class="phase-arrow">&rsaquo;</span>`;
+        });
+        tracker.innerHTML = html;
     }
 
     updateLeftPanel() {
@@ -150,49 +147,44 @@ class UIManager {
         if (!state) return;
         const panel = document.getElementById('left-panel');
 
-        // Show current player's leaders and missions
         const faction = state.activePlayer;
         const fName = faction === FACTIONS.DOMINION ? 'Dominion' : 'Liberation';
-        const fColor = faction === FACTIONS.DOMINION ? '#c44' : '#4ac';
+        const fClass = faction === FACTIONS.DOMINION ? 'dom' : 'lib';
+        const fColor = faction === FACTIONS.DOMINION ? 'var(--dom)' : 'var(--lib)';
 
         let html = '';
 
-        // Reputation & Time track
-        html += `<div class="panel-section">`;
-        html += `<div class="panel-title">Victory Track</div>`;
-        // Time bar
-        const timePercent = (state.timeMarker / MAX_TURNS) * 100;
-        html += `<div style="margin-bottom:6px">`;
-        html += `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">`;
-        html += `<span style="color:#c44">Time</span><span style="color:#c44;font-weight:700">${state.timeMarker} / ${MAX_TURNS}</span>`;
-        html += `</div>`;
-        html += `<div style="height:8px;background:#1a1a3a;border-radius:4px;overflow:hidden">`;
-        html += `<div style="height:100%;width:${timePercent}%;background:linear-gradient(90deg,#c44,#e66);border-radius:4px;transition:width 0.5s"></div>`;
-        html += `</div></div>`;
-        // Reputation bar
-        const repPercent = (state.reputationMarker / STARTING_REPUTATION) * 100;
-        html += `<div style="margin-bottom:6px">`;
-        html += `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">`;
-        html += `<span style="color:#4ac">Reputation</span><span style="color:#4ac;font-weight:700">${state.reputationMarker}</span>`;
-        html += `</div>`;
-        html += `<div style="height:8px;background:#1a1a3a;border-radius:4px;overflow:hidden">`;
-        html += `<div style="height:100%;width:${repPercent}%;background:linear-gradient(90deg,#4ac,#6ce);border-radius:4px;transition:width 0.5s"></div>`;
-        html += `</div></div>`;
-        // Win condition info
-        const gap = state.reputationMarker - state.timeMarker;
-        html += `<div style="font-size:11px;color:#778;text-align:center">`;
-        if (gap > 0) {
-            html += `Liberation needs <span style="color:#4ac;font-weight:700">${gap}</span> more points to win`;
-        } else {
-            html += `<span style="color:#4ac;font-weight:700">Liberation victory condition met!</span>`;
-        }
+        // Turn banner - WHO is playing and WHAT phase
+        html += `<div class="turn-banner ${fClass}">`;
+        html += `<div class="turn-banner-icon ${fClass}">${fClass === 'dom' ? 'D' : 'L'}</div>`;
+        html += `<div class="turn-banner-text">`;
+        html += `<div class="turn-banner-faction" style="color:${fColor}">${fName}'s Turn</div>`;
+        html += `<div class="turn-banner-phase">${this.getPhaseName(state.phase)}</div>`;
         html += `</div></div>`;
 
-        // Active player indicator
-        html += `<div class="panel-section" style="background:${fColor}15;border-left:3px solid ${fColor}">`;
-        html += `<div style="font-size:13px;font-weight:700;color:${fColor}">${fName}'s Turn</div>`;
-        html += `<div style="font-size:11px;color:#889">${this.getPhaseName(state.phase)}</div>`;
-        html += `</div>`;
+        // Victory Track
+        html += `<div class="panel-section">`;
+        html += `<div class="panel-title">Victory Track</div>`;
+
+        // Time bar
+        const timePercent = (state.timeMarker / MAX_TURNS) * 100;
+        html += `<div class="track-label"><span style="color:var(--dom)">Time</span><span style="color:var(--dom)">${state.timeMarker} / ${MAX_TURNS}</span></div>`;
+        html += `<div class="track-bar"><div class="track-fill dom" style="width:${timePercent}%"></div></div>`;
+
+        // Reputation bar
+        const repPercent = (state.reputationMarker / STARTING_REPUTATION) * 100;
+        html += `<div class="track-label"><span style="color:var(--lib)">Reputation</span><span style="color:var(--lib)">${state.reputationMarker}</span></div>`;
+        html += `<div class="track-bar"><div class="track-fill lib" style="width:${repPercent}%"></div></div>`;
+
+        // Gap info
+        const gap = state.reputationMarker - state.timeMarker;
+        html += `<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px">`;
+        if (gap > 0) {
+            html += `Liberation needs <span style="color:var(--lib);font-weight:700">${gap}</span> more points`;
+        } else {
+            html += `<span style="color:var(--lib);font-weight:700">Victory condition met!</span>`;
+        }
+        html += `</div></div>`;
 
         // Leaders section
         html += `<div class="panel-section">`;
@@ -202,55 +194,81 @@ class UIManager {
             const isAssigned = state.assignedLeaderIds.has(leader.id);
             const isSelected = this.selectedLeaderId === leader.id;
             const isCaptured = leader.captured;
+            const canSelect = state.phase === 'assignment' && !isAssigned && !isCaptured &&
+                              faction === FACTIONS.LIBERATION && !state.commandPasses[faction];
 
-            html += `<div class="leader-card ${isSelected ? 'selected' : ''} ${isAssigned || isCaptured ? 'assigned' : ''}"
-                          onclick="ui.selectLeader('${leader.id}')"
-                          data-leader-id="${leader.id}">`;
+            let cardClass = 'leader-card';
+            if (isSelected) cardClass += ' selected';
+            if (isAssigned || isCaptured) cardClass += ' assigned';
+            if (canSelect && !isSelected) cardClass += ' selectable';
+
+            html += `<div class="${cardClass}" onclick="ui.selectLeader('${leader.id}')" data-leader-id="${leader.id}">`;
             html += `<div class="leader-avatar" style="background:${leader.color}">${leader.avatar}</div>`;
             html += `<div class="leader-info">`;
-            html += `<div class="leader-name">${leader.name}${isCaptured ? ' (Captured)' : ''}${isAssigned ? ' (Assigned)' : ''}</div>`;
+            html += `<div class="leader-name">${leader.name}`;
+            if (isCaptured) html += ` <span style="color:var(--dom);font-size:10px">(Captured)</span>`;
+            if (isAssigned) html += ` <span style="color:var(--gold);font-size:10px">(Assigned)</span>`;
+            html += `</div>`;
             html += `<div class="leader-skills">`;
-            html += `<span class="skill-pip"><span class="icon">🎯</span>${leader.skills.combat}</span>`;
-            html += `<span class="skill-pip"><span class="icon">🕵</span>${leader.skills.intel}</span>`;
-            html += `<span class="skill-pip"><span class="icon">🤝</span>${leader.skills.diplomacy}</span>`;
-            html += `<span class="skill-pip"><span class="icon">📦</span>${leader.skills.logistics}</span>`;
+            html += `<span class="skill-pip"><span class="skill-label">CMB</span> ${leader.skills.combat}</span>`;
+            html += `<span class="skill-pip"><span class="skill-label">INT</span> ${leader.skills.intel}</span>`;
+            html += `<span class="skill-pip"><span class="skill-label">DIP</span> ${leader.skills.diplomacy}</span>`;
+            html += `<span class="skill-pip"><span class="skill-label">LOG</span> ${leader.skills.logistics}</span>`;
             html += `</div></div></div>`;
         });
         html += `</div>`;
 
-        // Missions section (only in assignment phase)
-        if (state.phase === 'assignment') {
+        // Missions (assignment phase)
+        if (state.phase === 'assignment' && faction === FACTIONS.LIBERATION) {
             html += `<div class="panel-section">`;
             html += `<div class="panel-title">${fName} Missions</div>`;
+            if (!this.selectedLeaderId) {
+                html += `<div style="font-size:11px;color:var(--text-muted);padding:4px 0">Select a leader first to see available missions.</div>`;
+            }
             state.missionHands[faction].forEach(mission => {
                 const isSelected = this.selectedMissionId === mission.id;
-                html += `<div class="mission-card ${isSelected ? 'selected' : ''}" onclick="ui.selectMission('${mission.id}')">`;
+                // Check if selected leader can do this mission
+                let canDo = false;
+                if (this.selectedLeaderId) {
+                    const leader = state.leaders[faction].find(l => l.id === this.selectedLeaderId);
+                    if (leader) {
+                        const skillVal = leader.skills[mission.skill] || 0;
+                        canDo = skillVal >= mission.minSkill;
+                    }
+                }
+
+                let cardClass = 'mission-card';
+                if (isSelected) cardClass += ' selected';
+                if (this.selectedLeaderId && canDo && !isSelected) cardClass += ' selectable';
+
+                const opacity = this.selectedLeaderId && !canDo ? 'opacity:0.4;' : '';
+                html += `<div class="${cardClass}" style="${opacity}" onclick="ui.selectMission('${mission.id}')">`;
                 html += `<div class="mission-name">${mission.name}</div>`;
                 html += `<div class="mission-desc">${mission.desc}</div>`;
-                html += `<div class="mission-skills-req">Requires: ${mission.skill} ${mission.minSkill}+</div>`;
+                html += `<div class="mission-req">Requires: ${mission.skill} ${mission.minSkill}+${!canDo && this.selectedLeaderId ? ' (insufficient)' : ''}</div>`;
                 html += `</div>`;
             });
             html += `</div>`;
         }
 
-        // Command phase: show pending assignments
+        // Pending missions (command phase)
         if (state.phase === 'command') {
             html += `<div class="panel-section">`;
             html += `<div class="panel-title">Pending Missions</div>`;
+            if (state.assignments[faction].length === 0) {
+                html += `<div style="font-size:11px;color:var(--text-muted);padding:4px 0">No pending missions. Move units or pass.</div>`;
+            }
             state.assignments[faction].forEach((a, i) => {
-                html += `<div class="mission-card" onclick="ui.resolveMission(${i})">`;
+                html += `<div class="mission-card" onclick="ui.resolveMission(${i})" style="cursor:pointer">`;
                 html += `<div class="mission-name">${a.mission.name}</div>`;
-                html += `<div style="font-size:11px;color:#aac">${a.leader.name} → ${state.systems[a.targetSystem]?.name || 'TBD'}</div>`;
-                html += `<div class="btn btn-small primary" style="margin-top:6px">Resolve</div>`;
+                html += `<div style="font-size:11px;color:var(--text-dim);margin-top:2px">${a.leader.name} &rarr; ${state.systems[a.targetSystem]?.name || 'TBD'}</div>`;
+                html += `<div class="btn btn-small primary" style="margin-top:8px;width:100%">Resolve Mission</div>`;
                 html += `</div>`;
             });
-            if (state.assignments[faction].length === 0) {
-                html += `<div style="font-size:12px;color:#667;padding:8px 0">No pending missions.</div>`;
-            }
             html += `</div>`;
         }
 
-        // Objectives (Liberation only or always visible)
+        // Objectives
         html += `<div class="panel-section">`;
         html += `<div class="panel-title">Active Objectives</div>`;
         state.currentObjectives.forEach(obj => {
@@ -260,10 +278,10 @@ class UIManager {
             html += `</div>`;
         });
         if (state.completedObjectives.length > 0) {
-            html += `<div class="panel-title" style="margin-top:8px">Completed</div>`;
+            html += `<div class="panel-title" style="margin-top:10px">Completed</div>`;
             state.completedObjectives.forEach(obj => {
                 html += `<div class="objective-card completed">`;
-                html += `<div class="objective-name">${obj.name} <span class="objective-points">+${obj.points} ✓</span></div>`;
+                html += `<div class="objective-name">${obj.name} <span class="objective-points">+${obj.points} &check;</span></div>`;
                 html += `</div>`;
             });
         }
@@ -284,34 +302,33 @@ class UIManager {
             const sys = state.systems[this.selectedSystemId];
             if (sys) {
                 const region = REGIONS.find(r => r.id === sys.region);
+                const loyaltyColor = sys.loyalty === 'dominion' ? 'var(--dom)' : sys.loyalty === 'liberation' ? 'var(--lib)' : 'var(--neutral)';
+                const loyaltyName = sys.loyalty.charAt(0).toUpperCase() + sys.loyalty.slice(1);
 
                 html += `<div class="panel-section">`;
-                html += `<div class="panel-title">${sys.name}</div>`;
-                html += `<div style="font-size:12px;color:${region?.color || '#888'};margin-bottom:6px">${region?.name || 'Unknown Region'}</div>`;
+                html += `<div class="system-header">${sys.name}</div>`;
+                html += `<div class="system-region" style="color:${region?.color || '#888'}">${region?.name || 'Unknown'}</div>`;
 
-                // Loyalty
-                const loyaltyColor = sys.loyalty === 'dominion' ? '#c44' : sys.loyalty === 'liberation' ? '#4ac' : '#666';
-                const loyaltyName = sys.loyalty.charAt(0).toUpperCase() + sys.loyalty.slice(1);
-                html += `<div style="font-size:12px;margin-bottom:4px">Loyalty: <span style="color:${loyaltyColor};font-weight:600">${loyaltyName}</span></div>`;
+                html += `<div class="system-meta">Loyalty: <span style="color:${loyaltyColor};font-weight:600">${loyaltyName}</span></div>`;
 
                 // Resources
-                html += `<div style="font-size:12px;margin-bottom:4px">Resources: `;
+                html += `<div class="system-meta">Resources: `;
+                const resIcons = { fleet: 'Fleet', trooper: 'Trooper', structure: 'Structure', airship: 'Airship' };
                 Object.entries(sys.resources).forEach(([type, count]) => {
-                    const icons = { fleet: '🚀', trooper: '⚔', structure: '🏗', airship: '✈' };
-                    for (let i = 0; i < count; i++) html += `${icons[type] || '?'} `;
+                    for (let i = 0; i < count; i++) html += `<span style="color:var(--gold)">${resIcons[type] || type}</span> `;
                 });
                 html += `</div>`;
 
                 if (sys.hasProduction) {
-                    html += `<div style="font-size:12px;color:#ffa;margin-bottom:4px">⚙ Production Facility</div>`;
+                    html += `<div class="system-meta" style="color:var(--gold)">Production Facility</div>`;
                 }
 
-                // Base indicator (Liberation player sees it)
+                // Base indicator
                 if (sys.id === state.liberationBase) {
                     if (state.baseRevealed) {
-                        html += `<div style="font-size:12px;color:#f44;font-weight:700">⚠ LIBERATION BASE (REVEALED)</div>`;
+                        html += `<div class="system-meta" style="color:var(--dom);font-weight:700">LIBERATION BASE (REVEALED)</div>`;
                     } else if (state.activePlayer === FACTIONS.LIBERATION) {
-                        html += `<div style="font-size:12px;color:#4ac;font-weight:700">★ Your Hidden Base</div>`;
+                        html += `<div class="system-meta" style="color:var(--lib);font-weight:700">Your Hidden Base</div>`;
                     }
                 }
                 html += `</div>`;
@@ -320,49 +337,46 @@ class UIManager {
                 ['dominion', 'liberation'].forEach(faction => {
                     const units = engine.getSystemUnits(this.selectedSystemId, faction);
                     const leaders = engine.getLeadersInSystem(this.selectedSystemId, faction);
-                    const fColor = faction === FACTIONS.DOMINION ? '#c44' : '#4ac';
+                    const fColor = faction === FACTIONS.DOMINION ? 'var(--dom)' : 'var(--lib)';
                     const fName = faction === FACTIONS.DOMINION ? 'Dominion' : 'Liberation';
 
                     if (units.space.length > 0 || units.ground.length > 0 || leaders.length > 0) {
                         html += `<div class="panel-section">`;
                         html += `<div class="panel-title" style="color:${fColor}">${fName} Forces</div>`;
 
-                        // Leaders
                         leaders.forEach(l => {
-                            html += `<div class="leader-card" style="padding:4px 6px">`;
-                            html += `<div class="leader-avatar" style="background:${l.color};width:24px;height:24px;font-size:12px">${l.avatar}</div>`;
-                            html += `<div class="leader-name" style="font-size:12px">${l.name}</div>`;
+                            html += `<div style="display:flex;align-items:center;gap:8px;padding:3px 0">`;
+                            html += `<div style="width:22px;height:22px;border-radius:50%;background:${l.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${l.avatar}</div>`;
+                            html += `<span style="font-size:12px;font-weight:600">${l.name}</span>`;
                             html += `</div>`;
                         });
 
-                        // Space units
                         if (units.space.length > 0) {
-                            html += `<div style="font-size:11px;color:#889;margin:4px 0 2px">Space Forces</div>`;
+                            html += `<div style="font-size:10px;color:var(--text-muted);margin:6px 0 3px;text-transform:uppercase;letter-spacing:1px">Space Forces</div>`;
                             const grouped = this.groupUnits(units.space);
                             Object.entries(grouped).forEach(([type, count]) => {
                                 const ut = Object.values(UNIT_TYPES).find(t => t.name === type);
                                 html += `<div class="unit-row">`;
                                 if (this.mode === 'moving' && this.movingFrom === this.selectedSystemId && faction === state.activePlayer) {
-                                    html += `<input type="checkbox" onchange="ui.toggleMoveUnit(this, '${ut?.id}')" />`;
+                                    html += `<input type="checkbox" onchange="ui.toggleMoveUnit(this, '${ut?.id}')" style="accent-color:var(--lib)" />`;
                                 }
                                 html += `<div class="unit-icon" style="color:${ut?.color || fColor}">${ut?.icon || '?'}</div>`;
-                                html += `<span>${type} x${count}</span>`;
+                                html += `<span>${type} <span style="color:var(--text-dim)">x${count}</span></span>`;
                                 html += `</div>`;
                             });
                         }
 
-                        // Ground units
                         if (units.ground.length > 0) {
-                            html += `<div style="font-size:11px;color:#889;margin:4px 0 2px">Ground Forces</div>`;
+                            html += `<div style="font-size:10px;color:var(--text-muted);margin:6px 0 3px;text-transform:uppercase;letter-spacing:1px">Ground Forces</div>`;
                             const grouped = this.groupUnits(units.ground);
                             Object.entries(grouped).forEach(([type, count]) => {
                                 const ut = Object.values(UNIT_TYPES).find(t => t.name === type);
                                 html += `<div class="unit-row">`;
                                 if (this.mode === 'moving' && this.movingFrom === this.selectedSystemId && faction === state.activePlayer) {
-                                    html += `<input type="checkbox" onchange="ui.toggleMoveUnit(this, '${ut?.id}')" />`;
+                                    html += `<input type="checkbox" onchange="ui.toggleMoveUnit(this, '${ut?.id}')" style="accent-color:var(--lib)" />`;
                                 }
                                 html += `<div class="unit-icon" style="color:${ut?.color || fColor}">${ut?.icon || '?'}</div>`;
-                                html += `<span>${type} x${count}</span>`;
+                                html += `<span>${type} <span style="color:var(--text-dim)">x${count}</span></span>`;
                                 html += `</div>`;
                             });
                         }
@@ -371,8 +385,8 @@ class UIManager {
                     }
                 });
 
-                // Action buttons for selected system
-                if (state.phase === 'command' && !state.activeCombat) {
+                // Actions for selected system
+                if (state.phase === 'command' && !state.activeCombat && state.activePlayer === FACTIONS.LIBERATION) {
                     const myUnits = engine.getSystemUnits(this.selectedSystemId, state.activePlayer);
                     const myLeaders = engine.getLeadersInSystem(this.selectedSystemId, state.activePlayer);
 
@@ -387,7 +401,6 @@ class UIManager {
                         html += `</div>`;
                     }
 
-                    // Check for combat
                     if (engine.checkCombat(this.selectedSystemId)) {
                         html += `<div class="panel-section">`;
                         html += `<button class="btn danger" style="width:100%" onclick="ui.startCombat('${this.selectedSystemId}')">Engage Combat!</button>`;
@@ -397,27 +410,33 @@ class UIManager {
             }
         } else {
             html += `<div class="panel-section">`;
-            html += `<div style="font-size:12px;color:#667;padding:16px 0;text-align:center">Click a system on the map to view details</div>`;
+            html += `<div style="font-size:12px;color:var(--text-muted);padding:20px 0;text-align:center">Click a system on the galaxy map to view details.</div>`;
             html += `</div>`;
         }
 
         // Probe tracker
         html += `<div class="panel-section">`;
         html += `<div class="panel-title">Probe Tracker</div>`;
-        html += `<div style="font-size:11px;color:#889;margin-bottom:4px">Probed systems: ${state.probeDiscards.length} / ${state.probeDiscards.length + state.probeDeck.length}</div>`;
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">Probed: ${state.probeDiscards.length} / ${state.probeDiscards.length + state.probeDeck.length} systems</div>`;
         const probedSystems = state.probeDiscards.map(id => state.systems[id]).filter(Boolean);
-        html += `<div style="display:flex;flex-wrap:wrap;gap:3px">`;
-        probedSystems.forEach(s => {
-            html += `<span class="probe-token" style="background:${s.id === state.liberationBase && state.baseRevealed ? '#f44' : '#335'};color:#aac" title="${s.name}">${s.name.charAt(0)}</span>`;
-        });
-        html += `</div></div>`;
+        if (probedSystems.length > 0) {
+            html += `<div style="display:flex;flex-wrap:wrap;gap:3px">`;
+            probedSystems.forEach(s => {
+                const isBase = s.id === state.liberationBase && state.baseRevealed;
+                const bg = isBase ? 'var(--dom)' : 'var(--bg-card)';
+                const color = isBase ? '#fff' : 'var(--text-dim)';
+                html += `<span class="probe-token" style="background:${bg};color:${color}" title="${s.name}">${s.name.substring(0, 2).toUpperCase()}</span>`;
+            });
+            html += `</div>`;
+        }
+        html += `</div>`;
 
         // Game log
         html += `<div class="panel-section">`;
         html += `<div class="panel-title">Game Log</div>`;
-        const recentLog = state.log.slice(-10).reverse();
+        const recentLog = state.log.slice(-12).reverse();
         recentLog.forEach(entry => {
-            html += `<div style="font-size:11px;color:#889;padding:2px 0;border-bottom:1px solid #1a1a3a">${entry.msg}</div>`;
+            html += `<div class="log-entry">${entry.msg}</div>`;
         });
         html += `</div>`;
 
@@ -433,45 +452,86 @@ class UIManager {
 
         if (state.gameOver) {
             const winner = state.winner === FACTIONS.DOMINION ? 'The Dominion' : 'The Liberation';
-            const color = state.winner === FACTIONS.DOMINION ? '#c44' : '#4ac';
-            html += `<div class="action-prompt" style="font-size:18px;color:${color};font-weight:700">${winner} Wins!</div>`;
+            const color = state.winner === FACTIONS.DOMINION ? 'var(--dom)' : 'var(--lib)';
+            html += `<div class="action-prompt"><div class="action-main" style="font-size:18px;color:${color}">${winner} Wins!</div></div>`;
             html += `<button class="btn primary" onclick="location.reload()">New Game</button>`;
-
-            // Show game over modal
             this.showGameOverModal(state.winner);
+
         } else if (state.activeCombat) {
-            html += `<div class="action-prompt">Combat in progress at ${state.systems[state.activeCombat.systemId].name}</div>`;
+            html += `<div class="action-prompt">`;
+            html += `<div class="action-main">Combat at ${state.systems[state.activeCombat.systemId].name}</div>`;
+            html += `<div class="action-hint">${state.activeCombat.phase === 'space' ? 'Space Battle' : 'Ground Battle'} - Round ${state.activeCombat.round}</div>`;
+            html += `</div>`;
             html += `<button class="btn primary" onclick="ui.combatRound()">Roll Dice</button>`;
             html += `<button class="btn danger" onclick="ui.retreatCombat()">Retreat</button>`;
+
         } else if (state.activePlayer === FACTIONS.DOMINION) {
-            // AI is thinking
+            // AI thinking
             html += `<div class="action-prompt">`;
-            html += `<span style="color:#c44;font-weight:600">Dominion</span> is deliberating`;
-            html += `<span style="animation:blink 1s infinite">...</span>`;
-            html += `</div>`;
-        } else if (state.phase === 'assignment') {
-            html += `<div class="action-prompt">`;
-            html += `<span style="color:#4ac;font-weight:600">Liberation</span>: Assign a leader to a mission, or pass.`;
+            html += `<div class="action-main" style="color:var(--dom)">Dominion is deliberating<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
+            html += `<div class="action-hint">The AI opponent is planning its moves.</div>`;
             html += `</div>`;
 
-            if (this.selectedLeaderId && this.selectedMissionId) {
-                html += `<button class="btn primary" onclick="ui.confirmAssignment()">Assign to Mission</button>`;
+        } else if (state.phase === 'assignment') {
+            // Step-by-step assignment flow
+            const hasLeader = !!this.selectedLeaderId;
+            const hasMission = !!this.selectedMissionId;
+            const hasTarget = this.mode === 'select_target';
+
+            html += `<div class="action-steps">`;
+
+            // Step 1: Select leader
+            html += `<div class="step ${hasLeader ? 'done' : 'active'}">`;
+            html += `<div class="step-num">${hasLeader ? '&check;' : '1'}</div>`;
+            html += `<span>${hasLeader ? 'Leader selected' : 'Select a leader'}</span>`;
+            html += `</div>`;
+
+            // Step 2: Select mission
+            html += `<div class="step ${hasMission ? 'done' : hasLeader ? 'active' : ''}">`;
+            html += `<div class="step-num">${hasMission ? '&check;' : '2'}</div>`;
+            html += `<span>${hasMission ? 'Mission selected' : 'Choose a mission'}</span>`;
+            html += `</div>`;
+
+            // Step 3: Target
+            html += `<div class="step ${hasTarget ? 'active' : hasMission ? 'active' : ''}">`;
+            html += `<div class="step-num">3</div>`;
+            html += `<span>${hasTarget ? 'Click target system' : 'Pick a target'}</span>`;
+            html += `</div>`;
+
+            html += `</div>`;
+
+            if (hasLeader && hasMission && !hasTarget) {
+                html += `<button class="btn primary" onclick="ui.confirmAssignment()">Assign</button>`;
             }
             html += `<button class="btn" onclick="ui.passAssignment()">Pass</button>`;
+
         } else if (state.phase === 'command') {
             html += `<div class="action-prompt">`;
-            html += `<span style="color:#4ac;font-weight:600">Liberation</span>: Resolve a mission, move units, or pass.`;
+            html += `<div class="action-main">Command Phase</div>`;
+            if (state.assignments[FACTIONS.LIBERATION].length > 0) {
+                html += `<div class="action-hint">Resolve your pending missions, move units, or pass.</div>`;
+            } else if (this.mode === 'moving') {
+                html += `<div class="action-hint">Click an adjacent system to move your units there.</div>`;
+            } else {
+                html += `<div class="action-hint">Select a system with your forces to move units, or pass to end.</div>`;
+            }
             html += `</div>`;
-            html += `<button class="btn" onclick="ui.passCommand()">Pass</button>`;
+            html += `<button class="btn" onclick="ui.passCommand()">End Phase</button>`;
+
         } else if (state.phase === 'refresh') {
-            html += `<div class="action-prompt">Refresh phase processing...</div>`;
+            html += `<div class="action-prompt">`;
+            html += `<div class="action-main">Refresh Phase</div>`;
+            html += `<div class="action-hint">Processing production, objectives, and turn advancement...</div>`;
+            html += `</div>`;
         }
 
-        // Production info
-        const faction = state.activePlayer;
-        const queueCount = state.productionQueue[faction].length;
-        if (queueCount > 0) {
-            html += `<div style="font-size:11px;color:#889;margin-left:16px">📦 ${queueCount} units in production</div>`;
+        // Production count
+        if (!state.gameOver) {
+            const faction = state.activePlayer;
+            const queueCount = state.productionQueue[faction].length;
+            if (queueCount > 0) {
+                html += `<div style="font-size:11px;color:var(--text-dim);margin-left:12px">${queueCount} unit${queueCount > 1 ? 's' : ''} building</div>`;
+            }
         }
 
         bar.innerHTML = html;
@@ -487,7 +547,6 @@ class UIManager {
 
         this.selectedLeaderId = id;
 
-        // If in command phase, center on leader's location
         if (state.phase === 'command' && leader.location) {
             this.selectedSystemId = leader.location;
             this.renderer.selectedSystem = leader.location;
@@ -497,6 +556,19 @@ class UIManager {
     }
 
     selectMission(id) {
+        const state = engine.state;
+        // Check leader can do this mission
+        if (this.selectedLeaderId) {
+            const leader = state.leaders[state.activePlayer].find(l => l.id === this.selectedLeaderId);
+            const mission = state.missionHands[state.activePlayer].find(m => m.id === id);
+            if (leader && mission) {
+                const skillVal = leader.skills[mission.skill] || 0;
+                if (skillVal < mission.minSkill) {
+                    showToast(`${leader.name} needs ${mission.skill} ${mission.minSkill}+ (has ${skillVal})`, 'warning');
+                    return;
+                }
+            }
+        }
         this.selectedMissionId = id;
         this.updateAll();
     }
@@ -505,11 +577,8 @@ class UIManager {
         const state = engine.state;
         if (!this.selectedLeaderId || !this.selectedMissionId) return;
 
-        const leader = state.leaders[state.activePlayer].find(l => l.id === this.selectedLeaderId);
-        if (!leader) return;
-
-        // Need to select target system
         this.mode = 'select_target';
+        this.renderer.highlightedSystems = new Set(Object.keys(state.systems));
         showToast('Click a system to target this mission.', 'info');
         this.updateAll();
     }
@@ -524,13 +593,13 @@ class UIManager {
         this.selectedLeaderId = null;
         this.selectedMissionId = null;
         this.mode = 'normal';
+        this.renderer.highlightedSystems.clear();
         showToast('Leader assigned to mission.', 'success');
 
-        // Add particle effect
         const sys = engine.state.systems[targetSystem];
         if (sys) {
             for (let i = 0; i < 10; i++) {
-                this.renderer.addParticle(sys.x, sys.y, '#7af');
+                this.renderer.addParticle(sys.x, sys.y, '#5dade2');
             }
         }
 
@@ -542,15 +611,16 @@ class UIManager {
         this.selectedLeaderId = null;
         this.selectedMissionId = null;
         this.mode = 'normal';
+        this.renderer.highlightedSystems.clear();
         this.updateAll();
     }
 
     passCommand() {
         engine.passCommand();
         this.mode = 'normal';
+        this.renderer.highlightedSystems.clear();
 
         if (engine.state.phase === 'refresh') {
-            // Refresh is automatic
             setTimeout(() => {
                 this.updateAll();
             }, 500);
@@ -581,9 +651,7 @@ class UIManager {
 
         // Highlight adjacent systems
         const adj = engine.getAdjacentSystems(this.selectedSystemId);
-        adj.forEach(id => {
-            this.renderer.moveTarget = id; // simplified; would highlight all
-        });
+        this.renderer.highlightedSystems = new Set(adj);
 
         showToast('Click an adjacent system to move units.', 'info');
         this.updateAll();
@@ -594,11 +662,11 @@ class UIManager {
         this.movingFrom = null;
         this.selectedUnitIds.clear();
         this.renderer.moveTarget = null;
+        this.renderer.highlightedSystems.clear();
         this.updateAll();
     }
 
     toggleMoveUnit(checkbox, unitTypeId) {
-        // For simplicity, we'll move all units of that type
         if (checkbox.checked) {
             this.selectedUnitIds.add(unitTypeId);
         } else {
@@ -611,7 +679,6 @@ class UIManager {
         const fromSystem = this.movingFrom;
         const faction = state.activePlayer;
 
-        // Get all unit IDs to move
         const unitIds = [];
         ['space', 'ground'].forEach(domain => {
             state.units[fromSystem][domain].forEach(u => {
@@ -628,7 +695,6 @@ class UIManager {
             return;
         }
 
-        // Also move the leader
         const leaders = engine.getLeadersInSystem(fromSystem, faction);
         if (leaders.length > 0) {
             engine.moveLeader(leaders[0].id, toSystem, faction);
@@ -644,11 +710,11 @@ class UIManager {
         this.movingFrom = null;
         this.selectedUnitIds.clear();
         this.renderer.moveTarget = null;
+        this.renderer.highlightedSystems.clear();
 
-        // Particles
         const sys = state.systems[toSystem];
         for (let i = 0; i < 15; i++) {
-            this.renderer.addParticle(sys.x, sys.y, faction === FACTIONS.DOMINION ? '#c44' : '#4ac');
+            this.renderer.addParticle(sys.x, sys.y, faction === FACTIONS.DOMINION ? '#e74c3c' : '#5dade2');
         }
 
         if (result.combat) {
@@ -682,7 +748,6 @@ class UIManager {
                 this.hideCombatModal();
                 this.updateAll();
 
-                // Check win condition after combat
                 if (engine.checkWinConditions()) {
                     this.updateAll();
                 }
@@ -696,7 +761,7 @@ class UIManager {
         const faction = engine.state.activePlayer;
         if (combatEngine.playCard(faction, cardId)) {
             showToast('Tactic card played!', 'success');
-            this.showCombatModal(); // Refresh modal to show played card
+            this.showCombatModal();
         }
     }
 
@@ -718,92 +783,104 @@ class UIManager {
 
         const sys = engine.state.systems[combat.systemId];
         let html = `<h2>Combat at ${sys.name}</h2>`;
-        html += `<div style="font-size:13px;color:#aac;margin-bottom:12px">${combat.phase === 'space' ? 'Space Battle' : 'Ground Battle'} - Round ${combat.round}</div>`;
+        html += `<div style="font-size:12px;color:var(--text-dim);margin-bottom:14px">${combat.phase === 'space' ? 'Space Battle' : 'Ground Battle'} &mdash; Round ${combat.round}</div>`;
 
         html += `<div class="combat-area">`;
 
         // Dominion side
         html += `<div class="combat-side dominion">`;
-        html += `<div style="font-size:14px;font-weight:700;color:#c44;margin-bottom:8px">Dominion</div>`;
+        html += `<div class="combat-faction-label" style="color:var(--dom)">Dominion</div>`;
         const domUnits = combat.dominion[combat.phase];
         domUnits.forEach(u => {
             const ut = Object.values(UNIT_TYPES).find(t => t.id === u.typeId);
-            const healthBar = '●'.repeat(u.maxHealth - u.damage) + '○'.repeat(u.damage);
-            html += `<div style="font-size:12px;margin:2px 0"><span style="color:${ut?.color || '#c44'}">${ut?.icon || '?'}</span> ${u.type} <span style="color:#888">${healthBar}</span></div>`;
+            const healthFull = u.maxHealth - u.damage;
+            const healthBar = '<span style="color:var(--green)">' + '&#9679;'.repeat(healthFull) + '</span>' +
+                              '<span style="color:#444">' + '&#9675;'.repeat(u.damage) + '</span>';
+            html += `<div style="font-size:12px;margin:3px 0;display:flex;gap:6px;align-items:center">`;
+            html += `<span style="color:${ut?.color || 'var(--dom)'}">${ut?.icon || '?'}</span>`;
+            html += `<span>${u.type}</span>`;
+            html += `<span style="font-size:10px;margin-left:auto">${healthBar}</span>`;
+            html += `</div>`;
         });
-        if (domUnits.length === 0) html += `<div style="font-size:12px;color:#666">No units</div>`;
+        if (domUnits.length === 0) html += `<div style="font-size:12px;color:var(--text-muted)">No units remaining</div>`;
 
         if (roundResult) {
             html += `<div class="dice-container">`;
             roundResult.dominion.roll.forEach(r => {
                 const cls = r.result === 'hit' ? 'hit' : r.result === 'crit' ? 'crit' : 'miss';
-                const sym = r.result === 'hit' ? '✦' : r.result === 'crit' ? '★' : '·';
+                const sym = r.result === 'hit' ? '&#10022;' : r.result === 'crit' ? '&#9733;' : '&middot;';
                 html += `<div class="die ${cls}" title="${r.type} die: ${r.result}">${sym}</div>`;
             });
             html += `</div>`;
-            html += `<div style="font-size:12px;color:#afa">${roundResult.dominion.effectiveHits} hits dealt</div>`;
+            html += `<div style="font-size:12px;color:var(--green);font-weight:600">${roundResult.dominion.effectiveHits} hit${roundResult.dominion.effectiveHits !== 1 ? 's' : ''} dealt</div>`;
         }
         html += `</div>`;
 
         // Liberation side
         html += `<div class="combat-side liberation">`;
-        html += `<div style="font-size:14px;font-weight:700;color:#4ac;margin-bottom:8px">Liberation</div>`;
+        html += `<div class="combat-faction-label" style="color:var(--lib)">Liberation</div>`;
         const libUnits = combat.liberation[combat.phase];
         libUnits.forEach(u => {
             const ut = Object.values(UNIT_TYPES).find(t => t.id === u.typeId);
-            const healthBar = '●'.repeat(u.maxHealth - u.damage) + '○'.repeat(u.damage);
-            html += `<div style="font-size:12px;margin:2px 0"><span style="color:${ut?.color || '#4ac'}">${ut?.icon || '?'}</span> ${u.type} <span style="color:#888">${healthBar}</span></div>`;
+            const healthFull = u.maxHealth - u.damage;
+            const healthBar = '<span style="color:var(--green)">' + '&#9679;'.repeat(healthFull) + '</span>' +
+                              '<span style="color:#444">' + '&#9675;'.repeat(u.damage) + '</span>';
+            html += `<div style="font-size:12px;margin:3px 0;display:flex;gap:6px;align-items:center">`;
+            html += `<span style="color:${ut?.color || 'var(--lib)'}">${ut?.icon || '?'}</span>`;
+            html += `<span>${u.type}</span>`;
+            html += `<span style="font-size:10px;margin-left:auto">${healthBar}</span>`;
+            html += `</div>`;
         });
-        if (libUnits.length === 0) html += `<div style="font-size:12px;color:#666">No units</div>`;
+        if (libUnits.length === 0) html += `<div style="font-size:12px;color:var(--text-muted)">No units remaining</div>`;
 
         if (roundResult) {
             html += `<div class="dice-container">`;
             roundResult.liberation.roll.forEach(r => {
                 const cls = r.result === 'hit' ? 'hit' : r.result === 'crit' ? 'crit' : 'miss';
-                const sym = r.result === 'hit' ? '✦' : r.result === 'crit' ? '★' : '·';
+                const sym = r.result === 'hit' ? '&#10022;' : r.result === 'crit' ? '&#9733;' : '&middot;';
                 html += `<div class="die ${cls}" title="${r.type} die: ${r.result}">${sym}</div>`;
             });
             html += `</div>`;
-            html += `<div style="font-size:12px;color:#afa">${roundResult.liberation.effectiveHits} hits dealt</div>`;
+            html += `<div style="font-size:12px;color:var(--green);font-weight:600">${roundResult.liberation.effectiveHits} hit${roundResult.liberation.effectiveHits !== 1 ? 's' : ''} dealt</div>`;
         }
         html += `</div>`;
         html += `</div>`;
 
         // Combat log
-        html += `<div style="margin-top:12px;padding:8px;background:rgba(0,0,0,0.3);border-radius:6px;max-height:120px;overflow-y:auto">`;
+        html += `<div style="margin-top:12px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;max-height:100px;overflow-y:auto">`;
         combat.combatLog.forEach(msg => {
-            html += `<div style="font-size:11px;color:#889;padding:1px 0">${msg}</div>`;
+            html += `<div style="font-size:11px;color:var(--text-dim);padding:1px 0">${msg}</div>`;
         });
         html += `</div>`;
 
-        // Action cards for current player
+        // Tactic cards
         if (!roundResult?.combatOver) {
             const playerFaction = engine.state.activePlayer;
             const availCards = combatEngine.getAvailableCards(playerFaction);
             const playedCard = combat.cardsPlayed[playerFaction];
 
             if (availCards.length > 0 && !playedCard) {
-                html += `<div style="margin-top:12px">`;
-                html += `<div style="font-size:11px;color:#889;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Play a Tactic Card (optional):</div>`;
+                html += `<div style="margin-top:14px">`;
+                html += `<div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1.5px">Play a Tactic Card (optional)</div>`;
                 html += `<div style="display:flex;gap:6px;flex-wrap:wrap">`;
                 availCards.forEach(card => {
-                    const borderColor = playerFaction === FACTIONS.DOMINION ? '#c44' : '#4ac';
-                    html += `<div class="mission-card" style="flex:1;min-width:140px;border-color:${borderColor}40" onclick="ui.playCombatCard('${card.id}')">`;
+                    const borderColor = playerFaction === FACTIONS.DOMINION ? 'var(--dom)' : 'var(--lib)';
+                    html += `<div class="mission-card" style="flex:1;min-width:140px;border-color:${borderColor}" onclick="ui.playCombatCard('${card.id}')">`;
                     html += `<div class="mission-name" style="font-size:12px">${card.name}</div>`;
                     html += `<div class="mission-desc" style="font-size:10px">${card.effect}</div>`;
                     html += `</div>`;
                 });
                 html += `</div></div>`;
             } else if (playedCard) {
-                html += `<div style="margin-top:8px;font-size:12px;color:#aac">Card played: <span style="font-weight:600">${playedCard.name}</span></div>`;
+                html += `<div style="margin-top:10px;font-size:12px;color:var(--text-dim)">Card played: <span style="font-weight:600;color:var(--text)">${playedCard.name}</span></div>`;
             }
 
-            html += `<div style="display:flex;gap:8px;margin-top:16px;justify-content:center">`;
+            html += `<div style="display:flex;gap:10px;margin-top:18px;justify-content:center">`;
             html += `<button class="btn primary" onclick="ui.combatRound()">Roll Dice</button>`;
             html += `<button class="btn danger" onclick="ui.retreatCombat()">Retreat</button>`;
             html += `</div>`;
         } else {
-            html += `<div style="text-align:center;margin-top:16px;font-size:14px;color:#afa;font-weight:600">Combat resolved!</div>`;
+            html += `<div style="text-align:center;margin-top:18px;font-size:15px;color:var(--green);font-weight:700">Combat Resolved</div>`;
         }
 
         modal.innerHTML = html;
@@ -819,37 +896,39 @@ class UIManager {
         overlay.classList.remove('hidden');
 
         const state = engine.state;
-        const color = winner === FACTIONS.DOMINION ? '#c44' : '#4ac';
+        const color = winner === FACTIONS.DOMINION ? 'var(--dom)' : 'var(--lib)';
         const name = winner === FACTIONS.DOMINION ? 'The Dominion' : 'The Liberation';
         const subtitle = winner === FACTIONS.DOMINION
             ? 'The iron fist of the Dominion has crushed the uprising. Order is restored through force.'
-            : 'The galaxy rises! The Liberation has inspired countless worlds to break their chains.';
+            : 'The galaxy rises! The Liberation has inspired countless worlds to break free.';
 
-        let html = `<div style="text-align:center;padding:24px 0">`;
-        html += `<div style="font-size:32px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:4px;margin-bottom:8px">${name} Wins</div>`;
-        html += `<div style="font-size:14px;color:#889;line-height:1.6;max-width:400px;margin:0 auto 24px">${subtitle}</div>`;
+        let html = `<div style="text-align:center;padding:28px 0">`;
+        html += `<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">Victory</div>`;
+        html += `<div style="font-size:32px;font-weight:900;color:${color};text-transform:uppercase;letter-spacing:4px;margin-bottom:12px">${name}</div>`;
+        html += `<div style="font-size:13px;color:var(--text-dim);line-height:1.6;max-width:400px;margin:0 auto 28px">${subtitle}</div>`;
 
-        // Stats
-        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:350px;margin:0 auto 24px">`;
-        html += `<div style="padding:8px;background:rgba(200,60,60,0.1);border:1px solid #c4433a;border-radius:6px">`;
-        html += `<div style="font-size:11px;color:#a88;text-transform:uppercase">Dominion Units</div>`;
-        html += `<div style="font-size:20px;font-weight:700;color:#c44">${engine.getTotalUnits(FACTIONS.DOMINION)}</div>`;
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:320px;margin:0 auto 28px">`;
+        html += `<div style="padding:10px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:8px">`;
+        html += `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Dominion</div>`;
+        html += `<div style="font-size:22px;font-weight:800;color:var(--dom)">${engine.getTotalUnits(FACTIONS.DOMINION)}</div>`;
+        html += `<div style="font-size:10px;color:var(--text-muted)">units</div>`;
         html += `</div>`;
-        html += `<div style="padding:8px;background:rgba(60,140,200,0.1);border:1px solid #4ac;border-radius:6px">`;
-        html += `<div style="font-size:11px;color:#88a;text-transform:uppercase">Liberation Units</div>`;
-        html += `<div style="font-size:20px;font-weight:700;color:#4ac">${engine.getTotalUnits(FACTIONS.LIBERATION)}</div>`;
+        html += `<div style="padding:10px;background:rgba(93,173,226,0.08);border:1px solid rgba(93,173,226,0.2);border-radius:8px">`;
+        html += `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Liberation</div>`;
+        html += `<div style="font-size:22px;font-weight:800;color:var(--lib)">${engine.getTotalUnits(FACTIONS.LIBERATION)}</div>`;
+        html += `<div style="font-size:10px;color:var(--text-muted)">units</div>`;
         html += `</div>`;
-        html += `<div style="padding:8px;background:rgba(100,100,200,0.1);border:1px solid #66a;border-radius:6px">`;
-        html += `<div style="font-size:11px;color:#889;text-transform:uppercase">Turns Played</div>`;
-        html += `<div style="font-size:20px;font-weight:700;color:#aac">${state.turn}</div>`;
+        html += `<div style="padding:10px;background:rgba(100,100,200,0.05);border:1px solid var(--border);border-radius:8px">`;
+        html += `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Turns</div>`;
+        html += `<div style="font-size:22px;font-weight:800;color:var(--text)">${state.turn}</div>`;
         html += `</div>`;
-        html += `<div style="padding:8px;background:rgba(60,160,60,0.1);border:1px solid #4a4;border-radius:6px">`;
-        html += `<div style="font-size:11px;color:#8a8;text-transform:uppercase">Objectives Done</div>`;
-        html += `<div style="font-size:20px;font-weight:700;color:#afa">${state.completedObjectives.length}</div>`;
+        html += `<div style="padding:10px;background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.15);border-radius:8px">`;
+        html += `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Objectives</div>`;
+        html += `<div style="font-size:22px;font-weight:800;color:var(--green)">${state.completedObjectives.length}</div>`;
         html += `</div>`;
         html += `</div>`;
 
-        html += `<button class="btn primary" style="padding:12px 36px;font-size:15px" onclick="location.reload()">Play Again</button>`;
+        html += `<button class="btn primary" style="padding:12px 40px;font-size:14px" onclick="location.reload()">Play Again</button>`;
         html += `</div>`;
 
         modal.innerHTML = html;
@@ -881,14 +960,16 @@ class UIManager {
         const domUnits = engine.getSystemUnits(sys.id, FACTIONS.DOMINION);
         const libUnits = engine.getSystemUnits(sys.id, FACTIONS.LIBERATION);
 
-        let html = `<div style="font-weight:600;margin-bottom:4px">${sys.name}</div>`;
-        html += `<div style="font-size:11px;color:#889">${sys.loyalty} | ${sys.hasProduction ? 'Production' : 'No Production'}</div>`;
+        const loyaltyColor = sys.loyalty === 'dominion' ? 'var(--dom)' : sys.loyalty === 'liberation' ? 'var(--lib)' : 'var(--neutral)';
+
+        let html = `<div style="font-weight:700;margin-bottom:3px">${sys.name}</div>`;
+        html += `<div style="font-size:11px;color:var(--text-dim)"><span style="color:${loyaltyColor}">${sys.loyalty}</span> &middot; ${sys.hasProduction ? 'Production' : 'No production'}</div>`;
 
         if (domUnits.space.length + domUnits.ground.length > 0) {
-            html += `<div style="font-size:11px;color:#c44;margin-top:4px">Dominion: ${domUnits.space.length} ships, ${domUnits.ground.length} ground</div>`;
+            html += `<div style="font-size:11px;color:var(--dom);margin-top:3px">Dominion: ${domUnits.space.length} ships, ${domUnits.ground.length} ground</div>`;
         }
         if (libUnits.space.length + libUnits.ground.length > 0) {
-            html += `<div style="font-size:11px;color:#4ac">Liberation: ${libUnits.space.length} ships, ${libUnits.ground.length} ground</div>`;
+            html += `<div style="font-size:11px;color:var(--lib)">Liberation: ${libUnits.space.length} ships, ${libUnits.ground.length} ground</div>`;
         }
 
         tt.innerHTML = html;
