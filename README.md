@@ -1,5 +1,7 @@
 # Galactic Uprising
 
+[![Docs](https://img.shields.io/badge/docs-mintlify-18a34a?style=flat-square)](https://mintlify.com/npow/galactic-uprising)
+
 A strategic battle for the fate of the galaxy. Two asymmetric factions. One hidden base. Fourteen turns to decide everything.
 
 ## Screenshots
